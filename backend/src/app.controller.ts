@@ -1,11 +1,14 @@
 import { Controller, Get } from '@nestjs/common';
+import { InjectConnection } from '@nestjs/mongoose';
+import { Connection } from 'mongoose';
 import { ClickHouseService } from './infrastructure/clickhouse/clickhouse.service';
 import { RedisService } from './infrastructure/redis/redis.service';
-import mongoose from 'mongoose';
 
 @Controller()
 export class AppController {
   constructor(
+    @InjectConnection()
+    private readonly mongoConnection: Connection,
     private readonly redisService: RedisService,
     private readonly clickHouseService: ClickHouseService,
   ) {}
@@ -29,10 +32,7 @@ export class AppController {
       status: 'ok',
       timestamp: new Date().toISOString(),
       dependencies: {
-        mongodb:
-          mongoose.connection.readyState === mongoose.ConnectionStates.connected
-            ? 'CONNECTED'
-            : 'DISCONNECTED',
+        mongodb: this.mongoConnection.readyState === 1 ? 'CONNECTED' : 'DISCONNECTED',
         redis,
         clickhouse,
       },
