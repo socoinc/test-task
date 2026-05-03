@@ -171,9 +171,9 @@ export class AnalyticsService {
               ${dateFilterUsages.expression}
             ) AS usedPromocodes
           FROM latest_users u
-          LEFT JOIN orders FINAL o
+          LEFT JOIN orders AS o FINAL
             ON o.user_id = u.user_id
-          LEFT JOIN promo_usages pu
+          LEFT JOIN promo_usages AS pu
             ON pu.user_id = u.user_id
           WHERE ({search:String} = '%%')
             OR (u.email ILIKE {search:String} OR u.name ILIKE {search:String})
@@ -294,9 +294,9 @@ export class AnalyticsService {
               ) AS totalDiscount,
               uniqExactIf(pu.user_id, ${dateFilterUsages.expression}) AS uniqueUsers
             FROM latest_promocodes p
-            LEFT JOIN orders FINAL o
+            LEFT JOIN orders AS o FINAL
               ON o.promocode_id = p.promocode_id
-            LEFT JOIN promo_usages pu
+            LEFT JOIN promo_usages AS pu
               ON pu.promocode_id = p.promocode_id
             WHERE ({search:String} = '%%') OR p.code ILIKE {search:String}
             GROUP BY
