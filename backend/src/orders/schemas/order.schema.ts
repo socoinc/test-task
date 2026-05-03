@@ -41,10 +41,16 @@ export class Order {
   })
   finalAmount: number;
 
-  @Prop()
+  @Prop({
+    type: String,
+    default: null,
+  })
   promocodeId?: string | null;
 
-  @Prop()
+  @Prop({
+    type: String,
+    default: null,
+  })
   promocodeCode?: string | null;
 
   createdAt: Date;
