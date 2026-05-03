@@ -7,6 +7,7 @@ import {
   CreatePromocodePayload,
   LoginPayload,
   MeResponse,
+  OrderRecord,
   RegisterPayload,
 } from '../types';
 
@@ -94,7 +95,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(payload),
     }, token),
-  myOrders: (token: string) => request('/orders/my', {}, token),
+  myOrders: (token: string) => request<OrderRecord[]>('/orders/my', {}, token),
   applyPromocode: (
     token: string,
     orderId: string,

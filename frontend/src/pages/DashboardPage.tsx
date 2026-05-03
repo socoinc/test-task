@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AppShell } from '../components/AppShell';
 import { AnalyticsTable } from '../components/AnalyticsTable';
 import { api, ApiError } from '../lib/api';
+import { OrderRecord } from '../types';
 
 type DashboardPageProps = {
   token: string;
@@ -61,7 +62,7 @@ export function DashboardPage({ token, onLogout }: DashboardPageProps) {
 
   const ordersQuery = useQuery({
     queryKey: ['my-orders'],
-    queryFn: () => api.myOrders(token) as Promise<Array<Record<string, unknown>>>,
+    queryFn: () => api.myOrders(token),
   });
 
   const refreshAll = async () => {
@@ -163,6 +164,15 @@ export function DashboardPage({ token, onLogout }: DashboardPageProps) {
 
     setDateFrom(startValue);
     setDateTo(endValue);
+  };
+
+  const selectOrder = (order: OrderRecord) => {
+    const orderId = order.id ?? order._id ?? '';
+    setApplyForm((current) => ({
+      ...current,
+      orderId,
+    }));
+    setFeedback(`Selected order ${orderId}`);
   };
 
   return (
@@ -332,16 +342,21 @@ export function DashboardPage({ token, onLogout }: DashboardPageProps) {
         <h3>My orders</h3>
         <div className="orders-list">
           {(ordersQuery.data ?? []).map((order, index) => (
-            <div className="order-row" key={String(order.id ?? index)}>
+            <button
+              className="order-row button-reset"
+              key={String(order.id ?? order._id ?? index)}
+              onClick={() => selectOrder(order)}
+              type="button"
+            >
               <div>
-                <strong>{String(order.id ?? 'order')}</strong>
+                <strong>{String(order.id ?? order._id ?? 'order')}</strong>
                 <span>{String(order.promocodeCode ?? 'No promocode')}</span>
               </div>
               <div>
                 <strong>{String(order.finalAmount ?? order.amount ?? '-')}</strong>
                 <span>Final amount</span>
               </div>
-            </div>
+            </button>
           ))}
         </div>
       </div>

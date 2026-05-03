@@ -56,3 +56,13 @@ export type AnalyticsQuery = {
   dateFrom?: string;
   dateTo?: string;
 };
+
+export type OrderRecord = {
+  _id?: string;
+  id?: string;
+  amount?: number;
+  finalAmount?: number;
+  discountAmount?: number;
+  promocodeCode?: string | null;
+  createdAt?: string;
+};
