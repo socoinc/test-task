@@ -1,98 +1,208 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# PromoCode Manager Backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+NestJS backend for the `PromoCode Manager` test task.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+Current scope:
+- JWT authentication
+- Users, promocodes, orders, promo usages
+- CQRS-style split between MongoDB writes and ClickHouse reads
+- Redis lock for `apply-promocode`
+- Redis cache for analytics endpoints
 
-## Description
+## Architecture
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+The backend uses three storage layers with different responsibilities:
 
-## Project setup
+- `MongoDB`: source of truth for all mutations and business rules
+- `ClickHouse`: denormalized read model for analytics tables
+- `Redis`: distributed lock and short-lived analytics cache
 
-```bash
-$ pnpm install
-```
+Write flow:
+1. Request hits NestJS controller
+2. DTO is validated by `ValidationPipe`
+3. Service writes data to MongoDB
+4. Service syncs the updated snapshot to ClickHouse
+5. Service invalidates cached analytics in Redis
 
-## Compile and run the project
+Read flow:
+1. Client requests analytics endpoint
+2. Backend checks Redis cache
+3. If cache miss, backend queries ClickHouse
+4. Response is cached in Redis with a short TTL
 
-```bash
-# development
-$ pnpm run start
+## Project Structure
 
-# watch mode
-$ pnpm run start:dev
+Main backend modules:
 
-# production mode
-$ pnpm run start:prod
-```
+- `src/auth`: registration, login, JWT strategy, protected auth routes
+- `src/users`: user profile and lifecycle
+- `src/promocodes`: promocode CRUD and validation
+- `src/orders`: order creation and `apply-promocode`
+- `src/analytics`: ClickHouse-backed analytics endpoints and sync service
+- `src/infrastructure`: Redis and ClickHouse adapters
+- `src/common`: shared config and types
 
-## Run tests
+## Environment
 
-```bash
-# unit tests
-$ pnpm run test
-
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
-```
-
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Create `.env` from `.env.example`:
 
 ```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
+cp .env.example .env
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Required variables:
 
-## Resources
+```env
+PORT=3001
+MONGO_URI=mongodb://admin:password@localhost:27017/promocodes?authSource=admin
+JWT_SECRET=change_me
+JWT_EXPIRES_IN=1d
+REDIS_HOST=localhost
+REDIS_PORT=6379
+CLICKHOUSE_URL=http://localhost:8123
+CLICKHOUSE_USERNAME=admin
+CLICKHOUSE_PASSWORD=password
+CLICKHOUSE_DATABASE=analytics
+```
 
-Check out a few resources that may come in handy when working with NestJS:
+## Local Run
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+### 1. Start infrastructure
 
-## Support
+From the repository root:
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+```bash
+docker compose up -d
+docker compose ps
+```
 
-## Stay in touch
+Infrastructure services:
+- MongoDB: `localhost:27017`
+- Redis: `localhost:6379`
+- ClickHouse HTTP: `localhost:8123`
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+### 2. Install and run backend
 
-## License
+```bash
+pnpm install
+pnpm build
+pnpm lint
+pnpm test
+pnpm start:dev
+```
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Backend will be available at `http://localhost:3001`.
+
+### 3. Verify health
+
+```bash
+curl http://localhost:3001/health
+```
+
+Expected result: service status plus dependency states for MongoDB, Redis, and ClickHouse.
+
+## Smoke Test
+
+Suggested manual flow:
+
+1. `POST /auth/register`
+2. `POST /auth/login`
+3. Use returned bearer token for protected routes
+4. `POST /promocodes`
+5. `POST /orders`
+6. `POST /orders/:id/apply-promocode`
+7. `GET /analytics/users`
+8. `GET /analytics/promocodes`
+9. `GET /analytics/promo-usages`
+
+Example register payload:
+
+```json
+{
+  "email": "demo@example.com",
+  "name": "Demo User",
+  "phone": "+79990000000",
+  "password": "strongpass123"
+}
+```
+
+Example promocode payload:
+
+```json
+{
+  "code": "SPRING2026",
+  "description": "Seasonal discount",
+  "discountPercent": 10,
+  "totalUsageLimit": 100,
+  "perUserUsageLimit": 1
+}
+```
+
+Example order payload:
+
+```json
+{
+  "amount": 1500
+}
+```
+
+Example apply payload:
+
+```json
+{
+  "code": "SPRING2026"
+}
+```
+
+## Quality Gates
+
+Local quality commands:
+
+```bash
+pnpm build
+pnpm lint
+pnpm test
+```
+
+CI runs the same checks on pushes and pull requests via GitHub Actions.
+
+## Deployment Notes
+
+### Best demo-friendly option
+
+For a demo build with minimal setup friction:
+
+- frontend: Vercel
+- backend: Render or Railway
+- MongoDB: Atlas free tier
+- Redis: Upstash free tier
+- ClickHouse: ClickHouse Cloud trial
+
+This is easy to wire up with GitHub-based deploys, but the stack is not fully free and permanent at production quality.
+
+### Best stable option
+
+For a stable project with this exact stack, the most practical setup is:
+
+- one small VPS
+- Docker Compose for backend + MongoDB + Redis + ClickHouse
+- optional reverse proxy with HTTPS
+
+That is not free, but it is simpler and more reliable than splitting this stack across several free providers.
+
+## Branching and Review
+
+Recommended workflow:
+
+1. Create a feature branch from `trunk`
+2. Make focused changes
+3. Open a pull request
+4. Wait for green CI
+5. Merge into `trunk`
+
+Example:
+
+```bash
+git checkout -b feature/readme-and-ci
+git push -u origin feature/readme-and-ci
+```
