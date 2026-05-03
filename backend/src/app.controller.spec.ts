@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { getConnectionToken } from '@nestjs/mongoose';
 import { AppController } from './app.controller';
 import { ClickHouseService } from './infrastructure/clickhouse/clickhouse.service';
 import { RedisService } from './infrastructure/redis/redis.service';
@@ -10,6 +11,12 @@ describe('AppController', () => {
     const app: TestingModule = await Test.createTestingModule({
       controllers: [AppController],
       providers: [
+        {
+          provide: getConnectionToken(),
+          useValue: {
+            readyState: 1,
+          },
+        },
         {
           provide: RedisService,
           useValue: {

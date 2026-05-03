@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { isValidObjectId, Model } from 'mongoose';
 import { randomUUID } from 'crypto';
 import { AnalyticsSyncService } from '../analytics/analytics-sync.service';
 import { AuthenticatedUser } from '../common/types/authenticated-request';
@@ -67,6 +67,10 @@ export class OrdersService {
     dto: ApplyPromocodeDto,
     user: AuthenticatedUser,
   ): Promise<OrderDocument> {
+    if (!isValidObjectId(orderId)) {
+      throw new BadRequestException('Invalid order id');
+    }
+
     const lockKey = `lock:apply-promocode:${orderId}:${dto.code.trim().toUpperCase()}`;
     const lockToken = randomUUID();
 
