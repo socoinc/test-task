@@ -46,6 +46,12 @@ class ApiError extends Error {
   }
 }
 
+type EntityResponse = {
+  id?: string;
+  _id?: string;
+  code?: string;
+};
+
 async function request<T>(
   path: string,
   options: RequestInit = {},
@@ -86,12 +92,12 @@ export const api = {
     }),
   me: (token: string) => request<MeResponse>('/auth/me', {}, token),
   createPromocode: (token: string, payload: CreatePromocodePayload) =>
-    request('/promocodes', {
+    request<EntityResponse>('/promocodes', {
       method: 'POST',
       body: JSON.stringify(payload),
     }, token),
   createOrder: (token: string, payload: CreateOrderPayload) =>
-    request('/orders', {
+    request<EntityResponse>('/orders', {
       method: 'POST',
       body: JSON.stringify(payload),
     }, token),

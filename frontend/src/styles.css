@@ -168,7 +168,8 @@ a {
 }
 
 .primary-button,
-.ghost-button {
+.ghost-button,
+.secondary-button {
   border: 0;
   border-radius: 1rem;
   padding: 0.95rem 1.1rem;
@@ -183,6 +184,11 @@ a {
 .ghost-button {
   background: rgba(255, 255, 255, 0.08);
   color: #f8fafc;
+}
+
+.secondary-button {
+  background: rgba(21, 59, 55, 0.08);
+  color: #153b37;
 }
 
 .form-error,
@@ -330,6 +336,18 @@ a {
   margin-top: 1rem;
 }
 
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.panel-header p {
+  margin: 0.35rem 0 0;
+  color: #6b7280;
+}
+
 .order-row {
   display: flex;
   justify-content: space-between;
@@ -337,6 +355,21 @@ a {
   padding: 0.9rem 1rem;
   border-radius: 1rem;
   background: rgba(21, 59, 55, 0.04);
+  border: 1px solid transparent;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease,
+    transform 120ms ease;
+}
+
+.order-row:hover {
+  background: rgba(21, 59, 55, 0.08);
+  transform: translateY(-1px);
+}
+
+.order-row-active {
+  border-color: rgba(15, 118, 110, 0.35);
+  background: rgba(20, 184, 166, 0.1);
 }
 
 .order-row div {
@@ -390,6 +423,19 @@ th {
   padding: 1rem 0 0.25rem;
 }
 
+.table-loading-state,
+.table-error-state {
+  padding: 1rem 0 0.25rem;
+}
+
+.table-loading-state {
+  color: #6b7280;
+}
+
+.table-error-state {
+  color: #991b1b;
+}
+
 @media (max-width: 1100px) {
   .auth-layout,
   .app-shell,
@@ -404,7 +450,8 @@ th {
 
   .toolbar-panel,
   .table-header,
-  .page-header {
+  .page-header,
+  .panel-header {
     flex-direction: column;
   }
 }

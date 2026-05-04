@@ -40,6 +40,12 @@ export function DashboardPage({ token, onLogout }: DashboardPageProps) {
     [dateFrom, dateTo, search],
   );
 
+  const resetFilters = () => {
+    setSearch('');
+    setDateFrom('');
+    setDateTo('');
+  };
+
   const meQuery = useQuery({
     queryKey: ['me'],
     queryFn: () => api.me(token),
@@ -83,8 +89,19 @@ export function DashboardPage({ token, onLogout }: DashboardPageProps) {
         totalUsageLimit: Number(promocodeForm.totalUsageLimit),
         perUserUsageLimit: Number(promocodeForm.perUserUsageLimit),
       }),
-    onSuccess: async () => {
-      setFeedback('Promocode created');
+    onSuccess: async (response) => {
+      setPromocodeForm({
+        code: '',
+        description: '',
+        discountPercent: 10,
+        totalUsageLimit: 100,
+        perUserUsageLimit: 1,
+      });
+      setApplyForm((current) => ({
+        ...current,
+        code: response.code ?? current.code,
+      }));
+      setFeedback(`Promocode ${response.code ?? 'created'} created`);
       await refreshAll();
     },
     onError: (error) => {
@@ -99,8 +116,16 @@ export function DashboardPage({ token, onLogout }: DashboardPageProps) {
       api.createOrder(token, {
         amount: Number(orderForm.amount),
       }),
-    onSuccess: async () => {
-      setFeedback('Order created');
+    onSuccess: async (response) => {
+      const orderId = response.id ?? response._id ?? '';
+      setOrderForm({
+        amount: 1000,
+      });
+      setApplyForm((current) => ({
+        ...current,
+        orderId: orderId || current.orderId,
+      }));
+      setFeedback(orderId ? `Order ${orderId} created` : 'Order created');
       await refreshAll();
     },
     onError: (error) => {
@@ -116,7 +141,7 @@ export function DashboardPage({ token, onLogout }: DashboardPageProps) {
         code: applyForm.code,
       }),
     onSuccess: async () => {
-      setFeedback('Promocode applied');
+      setFeedback(`Promocode ${applyForm.code} applied to order ${applyForm.orderId}`);
       await refreshAll();
     },
     onError: (error) => {
@@ -175,6 +200,12 @@ export function DashboardPage({ token, onLogout }: DashboardPageProps) {
     setFeedback(`Selected order ${orderId}`);
   };
 
+  const analyticsError =
+    (usersQuery.error instanceof ApiError && usersQuery.error.message) ||
+    (promocodesQuery.error instanceof ApiError && promocodesQuery.error.message) ||
+    (usagesQuery.error instanceof ApiError && usagesQuery.error.message) ||
+    null;
+
   return (
     <AppShell
       title="Analytics command center"
@@ -218,6 +249,9 @@ export function DashboardPage({ token, onLogout }: DashboardPageProps) {
               onChange={(event) => setDateTo(event.target.value)}
             />
           </label>
+          <button className="secondary-button" onClick={resetFilters} type="button">
+            Reset filters
+          </button>
         </div>
       </section>
 
@@ -283,7 +317,11 @@ export function DashboardPage({ token, onLogout }: DashboardPageProps) {
               required
             />
           </div>
-          <button className="primary-button" type="submit">
+          <button
+            className="primary-button"
+            disabled={createPromocodeMutation.isPending}
+            type="submit"
+          >
             Create promocode
           </button>
         </form>
@@ -301,7 +339,11 @@ export function DashboardPage({ token, onLogout }: DashboardPageProps) {
             }
             required
           />
-          <button className="primary-button" type="submit">
+          <button
+            className="primary-button"
+            disabled={createOrderMutation.isPending}
+            type="submit"
+          >
             Create order
           </button>
         </form>
@@ -330,7 +372,11 @@ export function DashboardPage({ token, onLogout }: DashboardPageProps) {
             }
             required
           />
-          <button className="primary-button" type="submit">
+          <button
+            className="primary-button"
+            disabled={applyPromocodeMutation.isPending}
+            type="submit"
+          >
             Apply promocode
           </button>
         </form>
@@ -339,26 +385,42 @@ export function DashboardPage({ token, onLogout }: DashboardPageProps) {
       {feedback ? <div className="feedback-banner">{feedback}</div> : null}
 
       <div className="orders-panel">
-        <h3>My orders</h3>
-        <div className="orders-list">
-          {(ordersQuery.data ?? []).map((order, index) => (
-            <button
-              className="order-row button-reset"
-              key={String(order.id ?? order._id ?? index)}
-              onClick={() => selectOrder(order)}
-              type="button"
-            >
-              <div>
-                <strong>{String(order.id ?? order._id ?? 'order')}</strong>
-                <span>{String(order.promocodeCode ?? 'No promocode')}</span>
-              </div>
-              <div>
-                <strong>{String(order.finalAmount ?? order.amount ?? '-')}</strong>
-                <span>Final amount</span>
-              </div>
-            </button>
-          ))}
+        <div className="panel-header">
+          <div>
+            <h3>My orders</h3>
+            <p>Select an order to prefill the apply-promocode form.</p>
+          </div>
+          <span className="table-count">{ordersQuery.data?.length ?? 0} total</span>
         </div>
+        {ordersQuery.isLoading ? (
+          <div className="table-loading-state">Loading orders...</div>
+        ) : ordersQuery.error instanceof ApiError ? (
+          <div className="table-error-state">{ordersQuery.error.message}</div>
+        ) : (ordersQuery.data?.length ?? 0) === 0 ? (
+          <div className="empty-state">No orders yet. Create one to test promo application.</div>
+        ) : (
+          <div className="orders-list">
+            {(ordersQuery.data ?? []).map((order, index) => (
+              <button
+                className={`order-row button-reset${
+                  applyForm.orderId === String(order.id ?? order._id ?? '') ? ' order-row-active' : ''
+                }`}
+                key={String(order.id ?? order._id ?? index)}
+                onClick={() => selectOrder(order)}
+                type="button"
+              >
+                <div>
+                  <strong>{String(order.id ?? order._id ?? 'order')}</strong>
+                  <span>{String(order.promocodeCode ?? 'No promocode')}</span>
+                </div>
+                <div>
+                  <strong>{String(order.finalAmount ?? order.amount ?? '-')}</strong>
+                  <span>Final amount</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="analytics-stack">
@@ -369,6 +431,8 @@ export function DashboardPage({ token, onLogout }: DashboardPageProps) {
             data={usersQuery.data?.items ?? []}
             total={usersQuery.data?.meta.total ?? 0}
             emptyText="No user analytics yet"
+            isLoading={usersQuery.isLoading}
+            errorText={analyticsError}
           />
         </div>
 
@@ -379,6 +443,8 @@ export function DashboardPage({ token, onLogout }: DashboardPageProps) {
             data={promocodesQuery.data?.items ?? []}
             total={promocodesQuery.data?.meta.total ?? 0}
             emptyText="No promocodes yet"
+            isLoading={promocodesQuery.isLoading}
+            errorText={analyticsError}
           />
         </div>
 
@@ -389,6 +455,8 @@ export function DashboardPage({ token, onLogout }: DashboardPageProps) {
             data={usagesQuery.data?.items ?? []}
             total={usagesQuery.data?.meta.total ?? 0}
             emptyText="No promo usage events yet"
+            isLoading={usagesQuery.isLoading}
+            errorText={analyticsError}
           />
         </div>
       </div>
