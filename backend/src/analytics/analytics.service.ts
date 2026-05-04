@@ -104,12 +104,12 @@ export class AnalyticsService {
         const search = `%${query.search?.trim() ?? ''}%`;
 
         const dateFilterOrders = this.buildDateFilter(
-          'o.created_at',
+          'created_at',
           query.dateFrom,
           query.dateTo,
         );
         const dateFilterUsages = this.buildDateFilter(
-          'pu.applied_at',
+          'applied_at',
           query.dateFrom,
           query.dateTo,
         );
@@ -154,17 +154,27 @@ export class AnalyticsService {
             u.phone AS phone,
             u.isActive AS isActive,
             u.createdAt AS createdAt,
-            countDistinct(o.order_id) AS totalOrders,
-            round(sumOrNull(o.final_amount), 2) AS totalSpent,
-            round(sumOrNull(o.discount_amount), 2) AS totalDiscount,
-            countDistinct(pu.promocode_code) AS usedPromocodes
+            countDistinctIf(
+              o.order_id,
+              ${dateFilterOrders.expression}
+            ) AS totalOrders,
+            round(
+              sumIf(o.final_amount, ${dateFilterOrders.expression}),
+              2
+            ) AS totalSpent,
+            round(
+              sumIf(o.discount_amount, ${dateFilterOrders.expression}),
+              2
+            ) AS totalDiscount,
+            countDistinctIf(
+              pu.promocode_code,
+              ${dateFilterUsages.expression}
+            ) AS usedPromocodes
           FROM latest_users u
-          LEFT JOIN orders FINAL o
+          LEFT JOIN orders AS o FINAL
             ON o.user_id = u.user_id
-            ${dateFilterOrders.clause}
-          LEFT JOIN promo_usages pu
+          LEFT JOIN promo_usages AS pu
             ON pu.user_id = u.user_id
-            ${dateFilterUsages.clause}
           WHERE ({search:String} = '%%')
             OR (u.email ILIKE {search:String} OR u.name ILIKE {search:String})
           GROUP BY
@@ -237,12 +247,12 @@ export class AnalyticsService {
           );
 
         const dateFilterOrders = this.buildDateFilter(
-          'o.created_at',
+          'created_at',
           query.dateFrom,
           query.dateTo,
         );
         const dateFilterUsages = this.buildDateFilter(
-          'pu.applied_at',
+          'applied_at',
           query.dateFrom,
           query.dateTo,
         );
@@ -274,16 +284,20 @@ export class AnalyticsService {
               p.usedCount AS usedCount,
               p.isActive AS isActive,
               p.createdAt AS createdAt,
-              round(sumOrNull(o.final_amount), 2) AS totalRevenue,
-              round(sumOrNull(pu.discount_amount), 2) AS totalDiscount,
-              uniqExact(pu.user_id) AS uniqueUsers
+              round(
+                sumIf(o.final_amount, ${dateFilterOrders.expression}),
+                2
+              ) AS totalRevenue,
+              round(
+                sumIf(pu.discount_amount, ${dateFilterUsages.expression}),
+                2
+              ) AS totalDiscount,
+              uniqExactIf(pu.user_id, ${dateFilterUsages.expression}) AS uniqueUsers
             FROM latest_promocodes p
-            LEFT JOIN orders FINAL o
+            LEFT JOIN orders AS o FINAL
               ON o.promocode_id = p.promocode_id
-              ${dateFilterOrders.clause}
-            LEFT JOIN promo_usages pu
+            LEFT JOIN promo_usages AS pu
               ON pu.promocode_id = p.promocode_id
-              ${dateFilterUsages.clause}
             WHERE ({search:String} = '%%') OR p.code ILIKE {search:String}
             GROUP BY
               p.promocode_id,
@@ -357,7 +371,7 @@ export class AnalyticsService {
           WHERE
             (({search:String} = '%%')
               OR (promocode_code ILIKE {search:String} OR user_email ILIKE {search:String}))
-            ${dateFilter.clause}
+            AND (${dateFilter.expression})
         `,
             {
               search,
@@ -382,7 +396,7 @@ export class AnalyticsService {
           WHERE
             (({search:String} = '%%')
               OR (promocode_code ILIKE {search:String} OR user_email ILIKE {search:String}))
-            ${dateFilter.clause}
+            AND (${dateFilter.expression})
           ORDER BY ${sortBy} ${sortOrder.toUpperCase()}
           LIMIT {limit:UInt32}
           OFFSET {offset:UInt32}
@@ -416,24 +430,24 @@ export class AnalyticsService {
     dateFrom?: string,
     dateTo?: string,
   ): {
-    clause: string;
+    expression: string;
     params: Record<string, string>;
   } {
-    const parts: string[] = [];
+    const parts: string[] = ['1 = 1'];
     const params: Record<string, string> = {};
 
     if (dateFrom) {
-      parts.push(`AND ${column} >= {dateFrom:DateTime}`);
+      parts.push(`${column} >= {dateFrom:DateTime}`);
       params.dateFrom = new Date(dateFrom).toISOString().slice(0, 19);
     }
 
     if (dateTo) {
-      parts.push(`AND ${column} <= {dateTo:DateTime}`);
+      parts.push(`${column} <= {dateTo:DateTime}`);
       params.dateTo = new Date(dateTo).toISOString().slice(0, 19);
     }
 
     return {
-      clause: parts.join(' '),
+      expression: parts.join(' AND '),
       params,
     };
   }

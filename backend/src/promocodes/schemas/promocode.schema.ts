@@ -53,10 +53,16 @@ export class Promocode {
   })
   isActive: boolean;
 
-  @Prop()
+  @Prop({
+    type: Date,
+    default: null,
+  })
   startsAt?: Date | null;
 
-  @Prop()
+  @Prop({
+    type: Date,
+    default: null,
+  })
   expiresAt?: Date | null;
 
   @Prop({
