@@ -4,6 +4,8 @@ type AnalyticsTableProps = {
   data: Array<Record<string, string | number | null>>;
   total: number;
   emptyText: string;
+  isLoading?: boolean;
+  errorText?: string | null;
 };
 
 export function AnalyticsTable({
@@ -12,6 +14,8 @@ export function AnalyticsTable({
   data,
   total,
   emptyText,
+  isLoading = false,
+  errorText = null,
 }: AnalyticsTableProps) {
   const columns = data[0] ? Object.keys(data[0]) : [];
 
@@ -25,7 +29,11 @@ export function AnalyticsTable({
         <span className="table-count">{total} total</span>
       </div>
 
-      {columns.length === 0 ? (
+      {errorText ? (
+        <div className="table-error-state">{errorText}</div>
+      ) : isLoading ? (
+        <div className="table-loading-state">Loading analytics...</div>
+      ) : columns.length === 0 ? (
         <div className="empty-state">{emptyText}</div>
       ) : (
         <div className="table-wrap">
