@@ -27,12 +27,13 @@ export class AppController {
       this.redisService.ping(),
       this.clickHouseService.ping(),
     ]);
+    const mongoReadyState = Number(this.mongoConnection.readyState);
 
     return {
       status: 'ok',
       timestamp: new Date().toISOString(),
       dependencies: {
-        mongodb: this.mongoConnection.readyState === 1 ? 'CONNECTED' : 'DISCONNECTED',
+        mongodb: mongoReadyState === 1 ? 'CONNECTED' : 'DISCONNECTED',
         redis,
         clickhouse,
       },
